@@ -1,11 +1,11 @@
 # Micro Post - Bacterial Trajectory Motion Analyzer
 
-![Version](https://img.shields.io/badge/version-1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.1-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10+-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-orange.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 
-**Version 1.0** | **Release Date: 2026-01-06**
+**Version 1.1** | **Release Date: 2026-01-07**
 
 A professional desktop application for comprehensive motion analysis of bacterial trajectories from tracking data. Features a modern dark tech UI theme with interactive trajectory visualization and advanced motion analytics.
 
@@ -57,6 +57,11 @@ A professional desktop application for comprehensive motion analysis of bacteria
   - Trajectory ellipse fitting
   - Oscillation index (PCA-based)
   - Summary statistics with standard deviations
+- **MSD/MSAD Curve Fitting**:
+  - Constant Velocity Drift Model: MSD(t) = 4D_T·t + V²t²
+  - Active Diffusion Model: MSD(t) = 4D_eff·(t - τ_r·(1-exp(-t/τ_r)))
+  - Automatic fitting with R² goodness-of-fit
+  - Journal-quality fitting result plots
 - **Modern Dark Tech UI**: Card-based layout with accent colors and smooth interactions
 
 ## Screenshots
@@ -175,12 +180,21 @@ Each `Trajectories_Results_*.xlsx` file should contain:
 
 ### Trajectories_Summary.xlsx
 
-The analysis generates a summary Excel file in the selected data folder with auto-adjusted column widths:
+The analysis generates a summary Excel file in the selected data folder with auto-adjusted column widths.
 
-1. **Parameters Sheet**: Experiment parameters + Data Path
+### Fitting_Results.png
+
+A journal-quality figure showing MSD and MSAD fitting results with:
+- Original data curves with standard deviation error bands
+- Fitted curves with model equations
+- Fitting parameters and R² values
+- Fitting range indicators
+
+1. **Parameters Sheet**: Experiment parameters + Data Path + Fitting Model + Fitting Range
 2. **Source Sheet**: Object source information (original file and ID)
 3. **Summary Sheet**: Aggregated statistics organized by column:
    - Global statistics (Area, Aspect Ratio, Max displacements, Ellipse fitting, Oscillation index)
+   - Fitting results (D_T/D_eff, V/τ_r, D_R, MSD R², MSAD R²)
    - Lag-time dependent statistics (tau, Count, Mean velocities, Angular displacement, MSD, MSAD)
    - All values include mean and standard deviation
 4. **Object_N Sheets**: Individual trajectory data with analysis columns:
@@ -231,6 +245,30 @@ Calculated using PCA analysis:
 ### Trajectory Ellipse Fitting
 
 Uses OpenCV's convex hull + fitEllipse method for minimum bounding ellipse of trajectory points.
+
+### MSD/MSAD Curve Fitting
+
+Two fitting models are available:
+
+**Constant Velocity Drift Model:**
+```
+MSD(t) = 4·D_T·t + V²·t²
+MSAD(t) = 2·D_R·t
+```
+- D_T: Translational diffusion coefficient (μm²/s)
+- V: Drift velocity (μm/s)
+- D_R: Rotational diffusion coefficient (rad²/s)
+
+**Active Diffusion Model:**
+```
+MSD(t) = 4·D_eff·(t - τ_r·(1 - exp(-t/τ_r)))
+MSAD(t) = 2·D_R·t
+```
+- D_eff: Effective diffusion coefficient (μm²/s)
+- τ_r: Direction persistence time (s)
+- D_R: Rotational diffusion coefficient (rad²/s)
+
+Fitting is performed on data from τ = 0 to τ = max_tau/2.
 
 ## Project Structure
 
@@ -306,7 +344,7 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 
 ## Changelog
 
-### Version 1.0 (2026-01-06)
+### Version 1.1 (2026-01-07)
 
 **Initial Release**
 
@@ -322,6 +360,10 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
   - Mean Squared Angular Displacement (MSAD)
   - Trajectory ellipse fitting
   - Oscillation index (PCA-based)
+- ✨ MSD/MSAD curve fitting:
+  - Constant Velocity Drift Model
+  - Active Diffusion Model
+  - Journal-quality fitting result plots
 - ✨ Summary statistics with mean and standard deviation
 - ✨ Modern dark tech UI with card-based layout
 - 📄 Comprehensive user manual in HTML format

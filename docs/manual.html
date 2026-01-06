@@ -291,7 +291,7 @@
         <header>
             <h1>Micro Post</h1>
             <p class="subtitle">细菌轨迹运动分析软件使用手册</p>
-            <span class="version">Version 1.0 | 2026-01-06</span>
+            <span class="version">Version 1.1 | 2026-01-07</span>
         </header>
 
         <nav class="toc">
@@ -312,6 +312,7 @@
                 <li class="toc-h3"><a href="#msad">3.6 均方角位移 (MSAD)</a></li>
                 <li class="toc-h3"><a href="#ellipse-fitting">3.7 轨迹椭圆拟合</a></li>
                 <li class="toc-h3"><a href="#oscillation-index">3.8 振荡指数</a></li>
+                <li class="toc-h3"><a href="#curve-fitting">3.9 MSD/MSAD 曲线拟合</a></li>
                 <li class="toc-h2"><a href="#summary-statistics">4. 统计汇总</a></li>
                 <li class="toc-h2"><a href="#output-format">5. 输出文件格式</a></li>
             </ul>
@@ -630,6 +631,55 @@
             <div class="warning">
                 <strong>注意：</strong>振荡指数对短轨迹或近似静止的轨迹可能不稳定，建议结合轨迹长度和总位移一起分析。
             </div>
+
+            <h3 id="curve-fitting">3.9 MSD/MSAD 曲线拟合</h3>
+            <p>对群体平均的 MSD 和 MSAD 曲线进行物理模型拟合，以提取扩散系数等物理参数。用户可在运动分析前选择两种拟合模型之一。</p>
+            
+            <h4>定速漂移模型 (Constant Velocity Drift)</h4>
+            <p>适用于存在定向漂移运动的情况：</p>
+            <div class="formula-box">
+                \[ \text{MSD}(t) = 4D_T t + V^2 t^2 \]
+                \[ \text{MSAD}(t) = 2D_R t \]
+            </div>
+            <p>拟合参数：</p>
+            <ul>
+                <li>\( D_T \)：平移扩散系数 (μm²/s)</li>
+                <li>\( V \)：漂移速率 (μm/s)</li>
+                <li>\( D_R \)：转动扩散系数 (rad²/s)</li>
+            </ul>
+
+            <h4>活性扩散模型 (Active Diffusion)</h4>
+            <p>适用于具有自推进特性的活性粒子：</p>
+            <div class="formula-box">
+                \[ \text{MSD}(t) = 4D_{\text{eff}}\left(t - \tau_r\left(1 - e^{-t/\tau_r}\right)\right) \]
+                \[ \text{MSAD}(t) = 2D_R t \]
+            </div>
+            <p>拟合参数：</p>
+            <ul>
+                <li>\( D_{\text{eff}} \)：有效扩散系数 (μm²/s)</li>
+                <li>\( \tau_r \)：方向持续时间 (s)</li>
+                <li>\( D_R \)：转动扩散系数 (rad²/s)</li>
+            </ul>
+
+            <h4>拟合区间</h4>
+            <p>拟合选取的时间区间为 <span class="highlight">0 到最大延迟时间的一半</span>，以确保拟合数据具有足够的统计可靠性。</p>
+
+            <h4>拟合优度</h4>
+            <p>使用决定系数 R² 评估拟合质量：</p>
+            <div class="formula-box">
+                \[ R^2 = 1 - \frac{SS_{\text{res}}}{SS_{\text{tot}}} = 1 - \frac{\sum(y_i - \hat{y}_i)^2}{\sum(y_i - \bar{y})^2} \]
+            </div>
+            <p>R² 越接近 1 表示拟合效果越好。</p>
+
+            <div class="physical-meaning">
+                <h5>物理意义</h5>
+                <p><strong>定速漂移模型：</strong>当细菌存在整体定向运动时（如趋化性），MSD 曲线在长时间尺度上呈现抛物线特征。\( D_T \) 反映随机扩散强度，\( V \) 反映定向运动速率。</p>
+                <p><strong>活性扩散模型：</strong>自推进粒子在短时间内表现为弹道运动，长时间后过渡到扩散运动。\( \tau_r \) 是两种运动模式的过渡时间尺度，\( D_{\text{eff}} \) 是长时间极限下的有效扩散系数。</p>
+            </div>
+
+            <div class="warning">
+                <strong>注意：</strong>若拟合结果出现负值参数（如负扩散系数），表示所选模型不适合当前数据，分析将终止并报错。
+            </div>
         </section>
 
         <!-- Section 4: Summary Statistics -->
@@ -710,13 +760,15 @@
         <!-- Section 5: Output Format -->
         <section id="output-format">
             <h2>5. 输出文件格式</h2>
-            <p>分析结果保存在 <code>Trajectories_Summary.xlsx</code> 文件中，包含以下 Sheet：</p>
+            <p>分析结果保存在 <code>Trajectories_Summary.xlsx</code> 文件中，同时生成 <code>Fitting_Results.png</code> 拟合曲线图。</p>
             
             <h3>Parameters Sheet</h3>
             <p>记录实验参数，包括：</p>
             <ul>
                 <li>原始数据中的所有参数（排除检查参数除外）</li>
                 <li><code>Data Path</code>：用户选择的数据文件夹路径</li>
+                <li><code>Fitting Model</code>：选择的拟合模型名称</li>
+                <li><code>Fitting Range (s)</code>：拟合时间区间</li>
             </ul>
 
             <h3>Source Sheet</h3>
@@ -728,7 +780,25 @@
             </ul>
 
             <h3>Summary Sheet</h3>
-            <p>统计汇总数据，按列组织，便于后续数据处理和绘图。</p>
+            <p>统计汇总数据，按列组织，便于后续数据处理和绘图。包含：</p>
+            <ul>
+                <li>全局统计量（面积、纵横比、最大位移、椭圆参数、振荡指数的均值和标准差）</li>
+                <li><strong>拟合结果</strong>（仅第一行有值）：
+                    <ul>
+                        <li>定速漂移模型：<code>D_T (μm²/s)</code>, <code>V (μm/s)</code>, <code>MSD R²</code>, <code>D_R (rad²/s)</code>, <code>MSAD R²</code></li>
+                        <li>活性扩散模型：<code>D_eff (μm²/s)</code>, <code>τ_r (s)</code>, <code>MSD R²</code>, <code>D_R (rad²/s)</code>, <code>MSAD R²</code></li>
+                    </ul>
+                </li>
+                <li>延迟时间相关统计量（tau、Count、速度、角位移、MSD、MSAD 的均值和标准差）</li>
+            </ul>
+
+            <h3>Fitting_Results.png</h3>
+            <p>拟合曲线图，包含两个子图：</p>
+            <ul>
+                <li><strong>上图 (a)</strong>：MSD 曲线及其拟合结果，显示原始数据（带标准差误差带）、拟合曲线、拟合公式和参数</li>
+                <li><strong>下图 (b)</strong>：MSAD 曲线及其拟合结果，同上</li>
+            </ul>
+            <p>图像格式为 PNG，分辨率 300 DPI，可直接用于论文发表。</p>
 
             <h3>Object_N Sheets</h3>
             <p>各对象的轨迹数据及分析结果，包含以下列：</p>

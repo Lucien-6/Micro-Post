@@ -13,16 +13,118 @@ from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QGroupBox, QLabel, QLineEdit, QPushButton, QSpinBox,
     QDoubleSpinBox, QFileDialog, QMessageBox, QStatusBar,
-    QSplitter, QProgressDialog, QApplication
+    QSplitter, QProgressDialog, QApplication, QDialog,
+    QRadioButton, QButtonGroup, QDialogButtonBox, QStyle
 )
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl
-from PyQt6.QtGui import QFont, QDesktopServices
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QSize
+from PyQt6.QtGui import QFont, QDesktopServices, QPixmap
 
 from src.core.data_loader import DataLoader
 from src.core.data_manager import DataManager
 from src.core.motion_analyzer import MotionAnalyzer
+from src.core.curve_fitting import MODEL_DRIFT, MODEL_ACTIVE, FittingError
 from src.ui.trajectory_canvas import TrajectoryCanvas
 from src.utils.logger import setup_logger, get_logger
+from src.utils.plot_fitting import plot_fitting_results
+
+
+class FittingModelDialog(QDialog):
+    """Dialog for analysis confirmation and fitting model selection."""
+
+    def __init__(self, parent=None, object_count: int = 0):
+        """
+        Initialize the analysis confirmation dialog.
+
+        Args:
+            parent: Parent widget.
+            object_count: Number of objects to analyze.
+        """
+        super().__init__(parent)
+        self.setWindowTitle("Motion Analysis")
+        self.setModal(True)
+        self.setMinimumWidth(370)
+
+        # Set background color to match QMessageBox
+        self.setStyleSheet("background-color: #363654;")
+
+        # Main layout
+        main_layout = QVBoxLayout(self)
+        main_layout.setSpacing(12)
+
+        # Content layout with icon
+        content_layout = QHBoxLayout()
+        content_layout.setSpacing(45)
+        content_layout.setContentsMargins(30, 0, 0, 0)
+
+        # Question mark icon (matching QMessageBox style)
+        icon_label = QLabel()
+        icon = self.style().standardIcon(
+            QStyle.StandardPixmap.SP_MessageBoxQuestion
+        )
+        icon_label.setPixmap(icon.pixmap(QSize(48, 48)))
+        icon_label.setFixedSize(48, 48)
+        content_layout.addWidget(icon_label, 0)
+
+        # Right side content
+        right_layout = QVBoxLayout()
+        right_layout.setSpacing(8)
+
+        # Confirmation info
+        info_label = QLabel(
+            f"Run motion analysis on {object_count} objects?\n"
+            f"This may take a few minutes."
+        )
+        info_label.setStyleSheet("font-size: 12px;")
+        right_layout.addWidget(info_label)
+
+        # Separator
+        right_layout.addSpacing(5)
+
+        # Fitting model selection
+        model_label = QLabel("Select MSD/MSAD Fitting Model:")
+        model_label.setStyleSheet("font-weight: bold; font-size: 12px;")
+        right_layout.addWidget(model_label)
+
+        # Radio buttons
+        self.button_group = QButtonGroup(self)
+
+        self.drift_radio = QRadioButton(MODEL_DRIFT)
+        self.drift_radio.setChecked(True)  # Default selection
+        self.button_group.addButton(self.drift_radio)
+        right_layout.addWidget(self.drift_radio)
+
+        self.active_radio = QRadioButton(MODEL_ACTIVE)
+        self.button_group.addButton(self.active_radio)
+        right_layout.addWidget(self.active_radio)
+
+        content_layout.addLayout(right_layout)
+        main_layout.addLayout(content_layout)
+
+        # Separator
+        main_layout.addSpacing(10)
+
+        # Dialog buttons
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok |
+            QDialogButtonBox.StandardButton.Cancel
+        )
+        button_box.button(QDialogButtonBox.StandardButton.Ok).setText(
+            "Start Analysis"
+        )
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        main_layout.addWidget(button_box)
+
+    def get_selected_model(self) -> str:
+        """
+        Get the selected fitting model type.
+
+        Returns:
+            MODEL_DRIFT or MODEL_ACTIVE.
+        """
+        if self.drift_radio.isChecked():
+            return MODEL_DRIFT
+        return MODEL_ACTIVE
 
 
 class AnalysisWorker(QThread):
@@ -31,22 +133,41 @@ class AnalysisWorker(QThread):
     progress = pyqtSignal(int, str)
     finished = pyqtSignal(bool, str)
 
-    def __init__(self, analyzer: MotionAnalyzer):
+    def __init__(self, analyzer: MotionAnalyzer, fitting_model: str):
+        """
+        Initialize the analysis worker.
+
+        Args:
+            analyzer: MotionAnalyzer instance.
+            fitting_model: Selected fitting model type.
+        """
         super().__init__()
         self.analyzer = analyzer
+        self.fitting_model = fitting_model
 
     def run(self):
         """Run the analysis in background."""
         try:
+            # Set fitting model
+            self.analyzer.set_fitting_model(self.fitting_model)
+
             self.progress.emit(10, "Analyzing trajectories...")
             self.analyzer.analyze_all_objects()
 
-            self.progress.emit(80, "Computing summary statistics...")
+            self.progress.emit(70, "Computing summary statistics and fitting...")
             self.analyzer.save_analysis_results()
+
+            self.progress.emit(90, "Generating fitting plots...")
+            # Plotting will be done in main thread after worker finishes
 
             self.progress.emit(100, "Complete")
             self.finished.emit(True, "Analysis completed successfully!")
 
+        except FittingError as e:
+            self.finished.emit(
+                False,
+                f"Curve fitting failed:\n\n{e.message}"
+            )
         except Exception as e:
             self.finished.emit(False, f"Analysis failed: {str(e)}")
 
@@ -297,6 +418,22 @@ class MainWindow(QMainWindow):
         if not folder:
             return
 
+        # Check if summary file already exists
+        summary_file = os.path.join(folder, "Trajectories_Summary.xlsx")
+        if os.path.exists(summary_file):
+            reply = QMessageBox.question(
+                self,
+                "File Already Exists",
+                "Trajectories_Summary.xlsx already exists in this folder.\n\n"
+                "If you continue, the existing file will be overwritten.\n\n"
+                "Do you want to continue?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                self.status_bar.showMessage("Data loading cancelled.")
+                return
+
         # Initialize logger
         self.logger = setup_logger(folder)
         self.logger.info(f"Loading data from: {folder}")
@@ -352,13 +489,21 @@ class MainWindow(QMainWindow):
 
         self.data_manager = DataManager(self.data_loader)
         min_duration = self.duration_spin.value()
-        total_objects = self.data_manager.filter_and_merge(min_duration)
+        stats = self.data_manager.filter_and_merge(min_duration)
 
-        if total_objects == 0:
+        total_files = stats["total_files"]
+        total_objects = stats["total_objects"]
+        passed_objects = stats["passed_objects"]
+        filtered_objects = total_objects - passed_objects
+
+        if passed_objects == 0:
             QMessageBox.warning(
                 self,
                 "No Objects",
-                f"No objects with duration >= {min_duration}s found."
+                f"No objects with duration >= {min_duration}s found.\n\n"
+                f"Data files found: {total_files}\n"
+                f"Total objects: {total_objects}\n"
+                f"All objects were filtered out."
             )
             self.status_bar.showMessage("No valid objects found.")
             return
@@ -371,10 +516,10 @@ class MainWindow(QMainWindow):
 
         # Set up canvas
         self.canvas.set_data_manager(self.data_manager)
-        self.count_spin.setMaximum(total_objects)
+        self.count_spin.setMaximum(passed_objects)
 
         # Draw initial trajectories
-        n_display = min(self.count_spin.value(), total_objects)
+        n_display = min(self.count_spin.value(), passed_objects)
         self.canvas.redraw_random(n_display)
 
         # Enable controls
@@ -384,7 +529,7 @@ class MainWindow(QMainWindow):
 
         # Update status
         self.status_bar.showMessage(
-            f"Loaded {total_objects} objects | "
+            f"Loaded {passed_objects} objects | "
             f"Displaying {n_display} trajectories | "
             f"Saved to: {os.path.basename(summary_path)}"
         )
@@ -392,7 +537,11 @@ class MainWindow(QMainWindow):
         QMessageBox.information(
             self,
             "Data Loaded",
-            f"Successfully loaded {total_objects} objects.\n"
+            f"Data loading completed successfully!\n\n"
+            f"Data files found: {total_files}\n"
+            f"Total objects: {total_objects}\n"
+            f"Passed filtering (>= {min_duration}s): {passed_objects}\n"
+            f"Filtered out: {filtered_objects}\n\n"
             f"Summary saved to:\n{summary_path}"
         )
 
@@ -492,17 +641,13 @@ class MainWindow(QMainWindow):
             )
             return
 
-        # Confirm analysis
-        reply = QMessageBox.question(
-            self,
-            "Confirm Analysis",
-            f"Run motion analysis on {object_count} objects?\n"
-            f"This may take a few minutes.",
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
-        )
-
-        if reply != QMessageBox.StandardButton.Yes:
+        # Show combined confirmation and fitting model selection dialog
+        fitting_dialog = FittingModelDialog(self, object_count)
+        if fitting_dialog.exec() != QDialog.DialogCode.Accepted:
+            self.status_bar.showMessage("Analysis cancelled.")
             return
+
+        selected_model = fitting_dialog.get_selected_model()
 
         # Create analyzer
         self.analyzer = MotionAnalyzer(self.data_manager)
@@ -519,8 +664,8 @@ class MainWindow(QMainWindow):
         progress.setMinimumDuration(0)
         progress.setValue(0)
 
-        # Create worker thread
-        self.analysis_worker = AnalysisWorker(self.analyzer)
+        # Create worker thread with fitting model
+        self.analysis_worker = AnalysisWorker(self.analyzer, selected_model)
         self.analysis_worker.progress.connect(
             lambda val, msg: self._on_analysis_progress(progress, val, msg)
         )
@@ -554,11 +699,42 @@ class MainWindow(QMainWindow):
         self.analyze_btn.setEnabled(True)
 
         if success:
+            # Generate fitting plot
+            plot_path = ""
+            plot_error = None
+            try:
+                fitting_info = self.analyzer.get_fitting_info()
+                output_dir = os.path.dirname(self.data_manager.summary_path)
+
+                plot_path = plot_fitting_results(
+                    output_path=output_dir,
+                    tau=fitting_info["tau"],
+                    mean_msd=fitting_info["mean_msd"],
+                    std_msd=fitting_info["std_msd"],
+                    mean_msad=fitting_info["mean_msad"],
+                    std_msad=fitting_info["std_msad"],
+                    model_type=fitting_info["model_type"],
+                    fit_params=fitting_info["fit_params"],
+                    fit_range=fitting_info["fit_range"]
+                )
+            except Exception as e:
+                plot_error = str(e)
+                self.logger.error(f"Failed to generate fitting plot: {e}")
+
+            # Show success message
+            result_msg = (
+                f"{message}\n\n"
+                f"Results saved to:\n{self.data_manager.summary_path}"
+            )
+            if plot_path and os.path.exists(plot_path):
+                result_msg += f"\n\nFitting plot saved to:\n{plot_path}"
+            elif plot_error:
+                result_msg += f"\n\nFitting plot generation failed:\n{plot_error}"
+
             QMessageBox.information(
                 self,
                 "Analysis Complete",
-                f"{message}\n\n"
-                f"Results saved to:\n{self.data_manager.summary_path}"
+                result_msg
             )
             self.status_bar.showMessage(
                 f"Analysis complete | Results saved to "

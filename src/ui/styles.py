@@ -317,13 +317,13 @@ def get_main_stylesheet() -> str:
     QMessageBox {{
         background-color: {Theme.BG_CARD};
         min-width: 400px;
-        min-height: 160px;
+        min-height: 220px;
     }}
 
     QMessageBox QLabel {{
         color: {Theme.TEXT_PRIMARY};
         font-size: {Theme.FONT_SIZE_NORMAL}px;
-        min-height: 80px;
+        min-height: 120px;
         padding: 8px;
         line-height: 1.5;
     }}

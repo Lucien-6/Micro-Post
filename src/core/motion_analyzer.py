@@ -3,15 +3,19 @@ Motion analysis module.
 
 This module provides comprehensive motion analysis for bacterial
 trajectories, including displacement, velocity, MSD, MSAD,
-ellipse fitting, and oscillation index calculations.
+ellipse fitting, oscillation index calculations, and curve fitting.
 """
 
 import numpy as np
 import pandas as pd
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Any
 from sklearn.decomposition import PCA
 
 from src.core.data_manager import DataManager
+from src.core.curve_fitting import (
+    MODEL_DRIFT, MODEL_ACTIVE, FittingError,
+    fit_msd_drift, fit_msd_active, fit_msad
+)
 from src.utils.ellipse_fitting import (
     fit_minimum_bounding_ellipse,
     calculate_ellipse_aspect_ratio
@@ -36,7 +40,32 @@ class MotionAnalyzer:
         """
         self.logger = get_logger()
         self.data_manager = data_manager
-        self.summary_data: Dict[str, any] = {}
+        self.summary_data: Dict[str, Any] = {}
+
+        # Fitting related attributes
+        self.fitting_model: str = MODEL_DRIFT
+        self.fit_results: Dict[str, float] = {}
+        self.fit_range: Tuple[int, int] = (0, 0)
+        self.max_tau_global: int = 0
+
+        # Store MSD/MSAD data for plotting
+        self._tau_array: Optional[np.ndarray] = None
+        self._mean_msd: Optional[np.ndarray] = None
+        self._std_msd: Optional[np.ndarray] = None
+        self._mean_msad: Optional[np.ndarray] = None
+        self._std_msad: Optional[np.ndarray] = None
+
+    def set_fitting_model(self, model_type: str) -> None:
+        """
+        Set the fitting model type.
+
+        Args:
+            model_type: MODEL_DRIFT or MODEL_ACTIVE.
+        """
+        if model_type not in [MODEL_DRIFT, MODEL_ACTIVE]:
+            raise ValueError(f"Invalid fitting model: {model_type}")
+        self.fitting_model = model_type
+        self.logger.info(f"Fitting model set to: {model_type}")
 
     def analyze_single_object(self, object_id: str) -> pd.DataFrame:
         """
@@ -368,11 +397,14 @@ class MotionAnalyzer:
 
     def compute_summary_statistics(self) -> pd.DataFrame:
         """
-        Compute summary statistics across all objects.
+        Compute summary statistics across all objects and perform fitting.
 
         Returns:
             DataFrame with summary statistics including means,
-            standard deviations, and counts for each lag time.
+            standard deviations, counts for each lag time, and fitting results.
+
+        Raises:
+            FittingError: If curve fitting fails.
         """
         object_ids = self.data_manager.get_all_object_ids()
         n_objects = len(object_ids)
@@ -391,19 +423,21 @@ class MotionAnalyzer:
         all_oscillation_idx = []
 
         # Find maximum tau across all objects
-        max_tau_global = 0
+        self.max_tau_global = 0
         for obj_id in object_ids:
             df = self.data_manager.get_object_data(obj_id)
             if df is not None:
                 valid_tau = df["tau (s)"].dropna()
                 if len(valid_tau) > 0:
-                    max_tau_global = max(max_tau_global, int(valid_tau.max()))
+                    self.max_tau_global = max(
+                        self.max_tau_global, int(valid_tau.max())
+                    )
 
         # Initialize lag-time data storage
         lag_data = {tau: {
             "mean_vx": [], "mean_vy": [], "mean_speed": [],
             "mean_angular_disp": [], "msd": [], "msad": []
-        } for tau in range(max_tau_global + 1)}
+        } for tau in range(self.max_tau_global + 1)}
 
         # Collect statistics from each object
         for obj_id in object_ids:
@@ -442,7 +476,7 @@ class MotionAnalyzer:
                 if pd.isna(tau):
                     continue
                 tau = int(tau)
-                if tau > max_tau_global:
+                if tau > self.max_tau_global:
                     continue
 
                 for key in ["mean_vx", "mean_vy", "mean_speed",
@@ -459,40 +493,75 @@ class MotionAnalyzer:
                     if not pd.isna(val):
                         lag_data[tau][key].append(val)
 
-        # Build summary DataFrame with column-based storage
-        # Global stats first, then tau/Count, then lag-time dependent stats
-        summary_data = {
-            "Mean Area (μm²)": [],
-            "Std Area (μm²)": [],
-            "Mean Aspect Ratio": [],
-            "Std Aspect Ratio": [],
-            "Mean Max dx (μm)": [],
-            "Std Max dx (μm)": [],
-            "Mean Max dy (μm)": [],
-            "Std Max dy (μm)": [],
-            "Mean Ellipse Major (μm)": [],
-            "Std Ellipse Major (μm)": [],
-            "Mean Ellipse Minor (μm)": [],
-            "Std Ellipse Minor (μm)": [],
-            "Mean Ellipse Aspect Ratio": [],
-            "Std Ellipse Aspect Ratio": [],
-            "Mean Oscillation Index": [],
-            "Std Oscillation Index": [],
-            "tau (s)": [],
-            "Count": [],
-            "Mean vx (μm/s)": [],
-            "Std vx (μm/s)": [],
-            "Mean vy (μm/s)": [],
-            "Std vy (μm/s)": [],
-            "Mean Speed (μm/s)": [],
-            "Std Speed (μm/s)": [],
-            "Mean Angular Disp (rad)": [],
-            "Std Angular Disp (rad)": [],
-            "Mean MSD (μm²)": [],
-            "Std MSD (μm²)": [],
-            "Mean MSAD (rad²)": [],
-            "Std MSAD (rad²)": []
-        }
+        # Compute Mean MSD and MSAD arrays for fitting
+        mean_msd_list = []
+        std_msd_list = []
+        mean_msad_list = []
+        std_msad_list = []
+        tau_list = []
+
+        for tau in range(self.max_tau_global + 1):
+            ld = lag_data[tau]
+            tau_list.append(tau)
+
+            if len(ld["msd"]) > 0:
+                mean_msd_list.append(np.mean(ld["msd"]))
+                std_msd_list.append(np.std(ld["msd"]))
+            else:
+                mean_msd_list.append(np.nan)
+                std_msd_list.append(np.nan)
+
+            if len(ld["msad"]) > 0:
+                mean_msad_list.append(np.mean(ld["msad"]))
+                std_msad_list.append(np.std(ld["msad"]))
+            else:
+                mean_msad_list.append(np.nan)
+                std_msad_list.append(np.nan)
+
+        # Convert to numpy arrays
+        self._tau_array = np.array(tau_list)
+        self._mean_msd = np.array(mean_msd_list)
+        self._std_msd = np.array(std_msd_list)
+        self._mean_msad = np.array(mean_msad_list)
+        self._std_msad = np.array(std_msad_list)
+
+        # Perform curve fitting
+        max_fit_tau = self.max_tau_global // 2
+        self.fit_range = (0, max_fit_tau)
+
+        self.logger.info(
+            f"Performing {self.fitting_model} fitting "
+            f"(range: 0-{max_fit_tau} s)"
+        )
+
+        # Fit MSD
+        if self.fitting_model == MODEL_DRIFT:
+            D_T, V, msd_r2 = fit_msd_drift(
+                self._tau_array, self._mean_msd, max_fit_tau
+            )
+            self.fit_results["D_T"] = D_T
+            self.fit_results["V"] = V
+        else:  # MODEL_ACTIVE
+            D_eff, tau_r, msd_r2 = fit_msd_active(
+                self._tau_array, self._mean_msd, max_fit_tau
+            )
+            self.fit_results["D_eff"] = D_eff
+            self.fit_results["tau_r"] = tau_r
+
+        self.fit_results["MSD_R2"] = msd_r2
+
+        # Fit MSAD (same for both models)
+        D_R, msad_r2 = fit_msad(
+            self._tau_array, self._mean_msad, max_fit_tau
+        )
+        self.fit_results["D_R"] = D_R
+        self.fit_results["MSAD_R2"] = msad_r2
+
+        # Update data manager with fitting info
+        self.data_manager.set_fitting_info(
+            self.fitting_model,
+            f"0 - {max_fit_tau}"
+        )
 
         # Global statistics (same for all tau, stored in first row)
         mean_area = np.mean(all_areas) if all_areas else np.nan
@@ -512,8 +581,61 @@ class MotionAnalyzer:
         mean_osc = np.mean(all_oscillation_idx) if all_oscillation_idx else np.nan
         std_osc = np.std(all_oscillation_idx) if all_oscillation_idx else np.nan
 
+        # Build summary DataFrame with column-based storage
+        # Order: Global stats -> Fitting results -> tau/Count -> Lag-time stats
+        summary_data = {
+            "Mean Area (μm²)": [],
+            "Std Area (μm²)": [],
+            "Mean Aspect Ratio": [],
+            "Std Aspect Ratio": [],
+            "Mean Max dx (μm)": [],
+            "Std Max dx (μm)": [],
+            "Mean Max dy (μm)": [],
+            "Std Max dy (μm)": [],
+            "Mean Ellipse Major (μm)": [],
+            "Std Ellipse Major (μm)": [],
+            "Mean Ellipse Minor (μm)": [],
+            "Std Ellipse Minor (μm)": [],
+            "Mean Ellipse Aspect Ratio": [],
+            "Std Ellipse Aspect Ratio": [],
+            "Mean Oscillation Index": [],
+            "Std Oscillation Index": [],
+        }
+
+        # Add fitting result columns based on model
+        if self.fitting_model == MODEL_DRIFT:
+            summary_data["D_T (μm²/s)"] = []
+            summary_data["V (μm/s)"] = []
+            summary_data["MSD R²"] = []
+            summary_data["D_R (rad²/s)"] = []
+            summary_data["MSAD R²"] = []
+        else:  # MODEL_ACTIVE
+            summary_data["D_eff (μm²/s)"] = []
+            summary_data["τ_r (s)"] = []
+            summary_data["MSD R²"] = []
+            summary_data["D_R (rad²/s)"] = []
+            summary_data["MSAD R²"] = []
+
+        # Continue with tau and lag-time columns
+        summary_data.update({
+            "tau (s)": [],
+            "Count": [],
+            "Mean vx (μm/s)": [],
+            "Std vx (μm/s)": [],
+            "Mean vy (μm/s)": [],
+            "Std vy (μm/s)": [],
+            "Mean Speed (μm/s)": [],
+            "Std Speed (μm/s)": [],
+            "Mean Angular Disp (rad)": [],
+            "Std Angular Disp (rad)": [],
+            "Mean MSD (μm²)": [],
+            "Std MSD (μm²)": [],
+            "Mean MSAD (rad²)": [],
+            "Std MSAD (rad²)": []
+        })
+
         # Build rows for each tau
-        for tau in range(max_tau_global + 1):
+        for tau in range(self.max_tau_global + 1):
             ld = lag_data[tau]
             n_count = len(ld["msd"])
 
@@ -535,6 +657,17 @@ class MotionAnalyzer:
                 summary_data["Std Ellipse Aspect Ratio"].append(std_ell_ar)
                 summary_data["Mean Oscillation Index"].append(mean_osc)
                 summary_data["Std Oscillation Index"].append(std_osc)
+
+                # Fitting results only in first row
+                if self.fitting_model == MODEL_DRIFT:
+                    summary_data["D_T (μm²/s)"].append(self.fit_results["D_T"])
+                    summary_data["V (μm/s)"].append(self.fit_results["V"])
+                else:
+                    summary_data["D_eff (μm²/s)"].append(self.fit_results["D_eff"])
+                    summary_data["τ_r (s)"].append(self.fit_results["tau_r"])
+                summary_data["MSD R²"].append(self.fit_results["MSD_R2"])
+                summary_data["D_R (rad²/s)"].append(self.fit_results["D_R"])
+                summary_data["MSAD R²"].append(self.fit_results["MSAD_R2"])
             else:
                 summary_data["Mean Area (μm²)"].append(np.nan)
                 summary_data["Std Area (μm²)"].append(np.nan)
@@ -552,6 +685,17 @@ class MotionAnalyzer:
                 summary_data["Std Ellipse Aspect Ratio"].append(np.nan)
                 summary_data["Mean Oscillation Index"].append(np.nan)
                 summary_data["Std Oscillation Index"].append(np.nan)
+
+                # NaN for fitting results
+                if self.fitting_model == MODEL_DRIFT:
+                    summary_data["D_T (μm²/s)"].append(np.nan)
+                    summary_data["V (μm/s)"].append(np.nan)
+                else:
+                    summary_data["D_eff (μm²/s)"].append(np.nan)
+                    summary_data["τ_r (s)"].append(np.nan)
+                summary_data["MSD R²"].append(np.nan)
+                summary_data["D_R (rad²/s)"].append(np.nan)
+                summary_data["MSAD R²"].append(np.nan)
 
             # tau and Count columns
             summary_data["tau (s)"].append(tau)
@@ -590,6 +734,25 @@ class MotionAnalyzer:
                 summary_data["Std MSAD (rad²)"].append(np.nan)
 
         return pd.DataFrame(summary_data)
+
+    def get_fitting_info(self) -> Dict[str, Any]:
+        """
+        Get fitting information for plotting.
+
+        Returns:
+            Dictionary containing tau array, MSD/MSAD data,
+            fitting model, parameters, and range.
+        """
+        return {
+            "tau": self._tau_array,
+            "mean_msd": self._mean_msd,
+            "std_msd": self._std_msd,
+            "mean_msad": self._mean_msad,
+            "std_msad": self._std_msad,
+            "model_type": self.fitting_model,
+            "fit_params": self.fit_results,
+            "fit_range": self.fit_range
+        }
 
     def save_analysis_results(self):
         """Save all analysis results to the Excel file."""

@@ -45,6 +45,24 @@ class DataManager:
         self.excluded_objects: Set[str] = set()
         self.summary_path: str = ""
 
+        # Fitting info
+        self.fitting_model: str = ""
+        self.fitting_range: str = ""
+
+    def set_fitting_info(self, model: str, fit_range: str) -> None:
+        """
+        Set fitting model and range information.
+
+        Args:
+            model: Fitting model name.
+            fit_range: Fitting range string (e.g., "0 - 15").
+        """
+        self.fitting_model = model
+        self.fitting_range = fit_range
+        self.logger.info(
+            f"Fitting info set: model={model}, range={fit_range} s"
+        )
+
     def _auto_adjust_column_width(self, writer: pd.ExcelWriter):
         """
         Auto-adjust column widths for all sheets in the workbook.
@@ -74,7 +92,7 @@ class DataManager:
                 adjusted_width = min(max(max_length + 2, 8), 50)
                 worksheet.column_dimensions[column_letter].width = adjusted_width
 
-    def filter_and_merge(self, min_duration: int) -> int:
+    def filter_and_merge(self, min_duration: int) -> Dict[str, int]:
         """
         Filter objects by duration and merge into unified dataset.
 
@@ -82,7 +100,10 @@ class DataManager:
             min_duration: Minimum tracking duration in seconds.
 
         Returns:
-            Total number of objects that passed filtering.
+            Dictionary containing statistics:
+            - total_files: Number of data files processed
+            - total_objects: Total objects before filtering
+            - passed_objects: Objects that passed filtering
         """
         self.min_duration = min_duration
         self.objects.clear()
@@ -90,10 +111,13 @@ class DataManager:
         self.excluded_objects.clear()
 
         object_counter = 1
+        total_objects_before = 0
+        total_files = len(self.data_loader.excel_files)
 
         for filepath in self.data_loader.excel_files:
             file_objects = self.data_loader.load_object_sheets(filepath)
             filename = os.path.basename(filepath)
+            total_objects_before += len(file_objects)
 
             for original_id, df in file_objects.items():
                 # Calculate tracking duration (number of rows - 1)
@@ -113,12 +137,17 @@ class DataManager:
                     )
                     object_counter += 1
 
-        total_count = len(self.objects)
+        passed_count = len(self.objects)
         self.logger.info(
-            f"Filtered and merged {total_count} objects "
+            f"Filtered and merged {passed_count} objects "
             f"(min_duration: {min_duration}s)"
         )
-        return total_count
+
+        return {
+            "total_files": total_files,
+            "total_objects": total_objects_before,
+            "passed_objects": passed_count
+        }
 
     def save_summary_excel(self) -> str:
         """
@@ -379,6 +408,19 @@ class DataManager:
                         "Parameter": param_name,
                         "Value": param_value
                     })
+
+                # Add fitting info to parameters
+                if self.fitting_model:
+                    params_data.append({
+                        "Parameter": "Fitting Model",
+                        "Value": self.fitting_model
+                    })
+                if self.fitting_range:
+                    params_data.append({
+                        "Parameter": "Fitting Range (s)",
+                        "Value": self.fitting_range
+                    })
+
                 params_df = pd.DataFrame(params_data)
                 params_df.to_excel(writer, sheet_name="Parameters", index=False)
 
