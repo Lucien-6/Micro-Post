@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Micro Post - 细菌轨迹运动分析软件使用手册</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --bg-primary: #1a1a2e;
+            --bg-secondary: #16213e;
+            --bg-card: #1f2940;
+            --accent: #00d4aa;
+            --accent-secondary: #4fc3f7;
+            --text-primary: #e8e8e8;
+            --text-secondary: #a0a0b0;
+            --border: #2d3a5a;
+            --code-bg: #0f1525;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', Arial, sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
+            line-height: 1.8;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 40px 30px;
+        }
+
+        header {
+            text-align: center;
+            padding: 60px 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 50px;
+        }
+
+        header h1 {
+            font-size: 2.8em;
+            color: var(--accent);
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+
+        header .subtitle {
+            font-size: 1.2em;
+            color: var(--text-secondary);
+        }
+
+        header .version {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 6px 16px;
+            background: var(--bg-card);
+            border: 1px solid var(--accent);
+            border-radius: 20px;
+            font-size: 0.9em;
+            color: var(--accent);
+        }
+
+        nav.toc {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 30px;
+            margin-bottom: 50px;
+        }
+
+        nav.toc h2 {
+            color: var(--accent);
+            margin-bottom: 20px;
+            font-size: 1.4em;
+        }
+
+        nav.toc ul {
+            list-style: none;
+        }
+
+        nav.toc li {
+            margin: 8px 0;
+        }
+
+        nav.toc a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        nav.toc a:hover {
+            color: var(--accent);
+        }
+
+        nav.toc .toc-h2 {
+            font-weight: bold;
+            color: var(--text-primary);
+        }
+
+        nav.toc .toc-h3 {
+            padding-left: 25px;
+            font-size: 0.95em;
+        }
+
+        section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 35px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            color: var(--accent);
+            font-size: 1.8em;
+            margin-bottom: 25px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--accent);
+        }
+
+        h3 {
+            color: var(--accent-secondary);
+            font-size: 1.3em;
+            margin: 30px 0 15px 0;
+        }
+
+        h4 {
+            color: var(--text-primary);
+            font-size: 1.1em;
+            margin: 20px 0 10px 0;
+        }
+
+        p {
+            margin-bottom: 15px;
+            color: var(--text-secondary);
+        }
+
+        ul, ol {
+            margin: 15px 0 15px 25px;
+            color: var(--text-secondary);
+        }
+
+        li {
+            margin: 8px 0;
+        }
+
+        .formula-box {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--accent);
+            border-radius: 8px;
+            padding: 20px 25px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+
+        .formula-box .MathJax {
+            font-size: 1.1em !important;
+        }
+
+        code {
+            background: var(--code-bg);
+            color: var(--accent);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+        }
+
+        pre {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        pre code {
+            background: none;
+            padding: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            border: 1px solid var(--border);
+            padding: 12px 15px;
+            text-align: left;
+        }
+
+        th {
+            background: var(--bg-secondary);
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        td {
+            color: var(--text-secondary);
+        }
+
+        tr:nth-child(even) {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .highlight {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .note {
+            background: rgba(0, 212, 170, 0.1);
+            border: 1px solid var(--accent);
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }
+
+        .note::before {
+            content: "💡 ";
+        }
+
+        .warning {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }
+
+        .warning::before {
+            content: "⚠️ ";
+        }
+
+        .physical-meaning {
+            background: rgba(79, 195, 247, 0.1);
+            border: 1px solid var(--accent-secondary);
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 15px 0;
+        }
+
+        .physical-meaning h5 {
+            color: var(--accent-secondary);
+            margin-bottom: 8px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border);
+            margin-top: 50px;
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 15px;
+            }
+            
+            header h1 {
+                font-size: 2em;
+            }
+            
+            section {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Micro Post</h1>
+            <p class="subtitle">细菌轨迹运动分析软件使用手册</p>
+            <span class="version">Version 1.0 | 2026-01-06</span>
+        </header>
+
+        <nav class="toc">
+            <h2>📑 目录</h2>
+            <ul>
+                <li class="toc-h2"><a href="#overview">1. 软件概述</a></li>
+                <li class="toc-h2"><a href="#workflow">2. 工作流程</a></li>
+                <li class="toc-h3"><a href="#data-loading">2.1 数据加载与验证</a></li>
+                <li class="toc-h3"><a href="#data-filtering">2.2 数据筛选与合并</a></li>
+                <li class="toc-h3"><a href="#trajectory-preview">2.3 轨迹预览与交互</a></li>
+                <li class="toc-h3"><a href="#object-exclusion">2.4 对象排除</a></li>
+                <li class="toc-h2"><a href="#motion-analysis">3. 运动分析模块</a></li>
+                <li class="toc-h3"><a href="#basic-quantities">3.1 基本物理量</a></li>
+                <li class="toc-h3"><a href="#displacement">3.2 位移分析</a></li>
+                <li class="toc-h3"><a href="#angular-displacement">3.3 角位移分析</a></li>
+                <li class="toc-h3"><a href="#velocity">3.4 速度分析</a></li>
+                <li class="toc-h3"><a href="#msd">3.5 均方位移 (MSD)</a></li>
+                <li class="toc-h3"><a href="#msad">3.6 均方角位移 (MSAD)</a></li>
+                <li class="toc-h3"><a href="#ellipse-fitting">3.7 轨迹椭圆拟合</a></li>
+                <li class="toc-h3"><a href="#oscillation-index">3.8 振荡指数</a></li>
+                <li class="toc-h2"><a href="#summary-statistics">4. 统计汇总</a></li>
+                <li class="toc-h2"><a href="#output-format">5. 输出文件格式</a></li>
+            </ul>
+        </nav>
+
+        <!-- Section 1: Overview -->
+        <section id="overview">
+            <h2>1. 软件概述</h2>
+            <p>
+                <strong>Micro Post</strong> 是一款专业的细菌轨迹运动分析软件，用于处理从显微镜追踪实验中获取的细菌运动轨迹数据。
+                软件采用现代化的深色科技主题界面，提供直观的数据可视化和全面的运动学分析功能。
+            </p>
+            
+            <h3>核心功能</h3>
+            <ul>
+                <li><span class="highlight">数据加载与验证</span>：自动搜索并验证轨迹Excel文件，确保参数一致性</li>
+                <li><span class="highlight">数据筛选与合并</span>：根据最短追踪时长筛选对象并合并至统一表格</li>
+                <li><span class="highlight">交互式轨迹预览</span>：支持鼠标悬停、点击、缩放等交互操作</li>
+                <li><span class="highlight">运动学分析</span>：计算位移、速度、MSD、MSAD、振荡指数等物理量</li>
+                <li><span class="highlight">统计汇总</span>：对所有对象进行平均统计分析</li>
+            </ul>
+        </section>
+
+        <!-- Section 2: Workflow -->
+        <section id="workflow">
+            <h2>2. 工作流程</h2>
+            
+            <h3 id="data-loading">2.1 数据加载与验证</h3>
+            <p>软件会自动搜索用户选择文件夹及其子文件夹（最多三级深度）中所有符合命名规则 <code>Trajectories_Results_*.xlsx</code> 的Excel文件。</p>
+            
+            <h4>参数一致性检查</h4>
+            <p>为确保数据来源于同一批次实验且经过相同的预处理，软件会检查所有文件 Parameters Sheet 中的参数是否一致。</p>
+            <p><strong>排除检查的参数：</strong></p>
+            <ul>
+                <li><code>Video Path</code> - 视频文件路径</li>
+                <li><code>Mask Directory</code> - 掩膜目录</li>
+                <li><code>Exclude Object IDs</code> - 排除的对象ID</li>
+                <li><code>Total Objects</code> - 总对象数</li>
+                <li><code>Passed Objects</code> - 通过筛选的对象数</li>
+                <li><code>Filtered Objects</code> - 被过滤的对象数</li>
+            </ul>
+            
+            <div class="note">
+                若检测到参数不一致，软件将弹窗报错并详细指出哪些文件的哪些参数与第一组数据不一致。
+            </div>
+
+            <h3 id="data-filtering">2.2 数据筛选与合并</h3>
+            <p>通过参数验证后，软件将根据用户设定的<span class="highlight">最短追踪时长阈值</span>筛选对象：</p>
+            <ul>
+                <li>只有追踪时长 ≥ 阈值的对象才会被保留</li>
+                <li>阈值最小值为 2 秒，默认值为 10 秒</li>
+                <li>筛选后的对象数据合并到统一的 <code>Trajectories_Summary.xlsx</code> 文件中</li>
+                <li>对象按并入顺序重新编号（Object_1, Object_2, ...）</li>
+            </ul>
+
+            <h3 id="trajectory-preview">2.3 轨迹预览与交互</h3>
+            <p>数据加载完成后，软件会在画布上随机显示 N 条轨迹供用户预览。</p>
+            
+            <h4>显示特性</h4>
+            <ul>
+                <li>不同轨迹使用不同颜色区分</li>
+                <li>轨迹起点用<span class="highlight">三角形</span>标注</li>
+                <li>轨迹终点用<span class="highlight">圆点</span>标注</li>
+                <li>坐标原点位于左上角</li>
+            </ul>
+
+            <h4>鼠标交互操作</h4>
+            <table>
+                <tr>
+                    <th>操作</th>
+                    <th>效果</th>
+                </tr>
+                <tr>
+                    <td>鼠标悬停（≤5px）</td>
+                    <td>显示轨迹编号</td>
+                </tr>
+                <tr>
+                    <td>左键单击</td>
+                    <td>隐藏点击的轨迹</td>
+                </tr>
+                <tr>
+                    <td>右键单击</td>
+                    <td>隐藏其他所有轨迹</td>
+                </tr>
+                <tr>
+                    <td>双击空白区域</td>
+                    <td>恢复显示所有轨迹</td>
+                </tr>
+                <tr>
+                    <td>滚轮向上</td>
+                    <td>以鼠标位置为中心放大</td>
+                </tr>
+                <tr>
+                    <td>滚轮向下</td>
+                    <td>以鼠标位置为中心缩小</td>
+                </tr>
+                <tr>
+                    <td>中键单击</td>
+                    <td>重置缩放至原始视图</td>
+                </tr>
+            </table>
+
+            <h3 id="object-exclusion">2.4 对象排除</h3>
+            <p>用户可以在预览后手动排除特定对象。在输入框中输入对象编号，支持以下格式：</p>
+            <ul>
+                <li>单个编号：<code>3</code></li>
+                <li>连续范围：<code>7-10</code></li>
+                <li>混合格式：<code>3, 7-10, 15, 20-25</code></li>
+            </ul>
+            <p>点击"确定排除"后，对应对象的数据Sheet及Source记录将被删除，但<span class="highlight">剩余对象不会重新编号</span>。</p>
+        </section>
+
+        <!-- Section 3: Motion Analysis -->
+        <section id="motion-analysis">
+            <h2>3. 运动分析模块</h2>
+            <p>运动分析模块对每个对象的轨迹数据进行全面的运动学计算，包括位移、速度、扩散特性和形态特征等多个维度的物理量。</p>
+
+            <h3 id="basic-quantities">3.1 基本物理量</h3>
+            
+            <h4>瞬时纵横比 (Aspect Ratio)</h4>
+            <p>细菌在每一时刻的形态特征，定义为短轴与长轴的比值：</p>
+            <div class="formula-box">
+                \[ AR(t) = \frac{l_{\rm minor}(t)}{l_{\rm major}(t)} \]
+            </div>
+            <p>其中：</p>
+            <ul>
+                <li>\( l_{\rm minor}(t) \)：t 时刻细菌的短轴长度 (μm)</li>
+                <li>\( l_{\rm major}(t) \)：t 时刻细菌的长轴长度 (μm)</li>
+                <li>\( AR \)：aspect_ratio，纵横比</li>
+            </ul>
+            <div class="physical-meaning">
+                <h5>物理意义</h5>
+                <p>纵横比反映细菌的形态。值越接近 1 表示形状越接近圆形，值越小表示细菌越细长。典型杆状细菌的纵横比约为 0.2-0.4。</p>
+            </div>
+
+            <h3 id="displacement">3.2 位移分析</h3>
+            
+            <h4>相对位移</h4>
+            <p>各时刻相对于起始位置的位移：</p>
+            <div class="formula-box">
+                \[ dx(t) = x(t) - x(0) \]
+                \[ dy(t) = y(t) - y(0) \]
+                \[ d(t) = \sqrt{dx(t)^2 + dy(t)^2} \]
+            </div>
+            <p>其中：</p>
+            <ul>
+                <li>\( dx(t) \)：X 方向位移 (μm)</li>
+                <li>\( dy(t) \)：Y 方向位移 (μm)</li>
+                <li>\( d(t) \)：总位移大小 (μm)</li>
+            </ul>
+
+            <h4>最大位移</h4>
+            <p>整条轨迹中各方向的最大位移值：</p>
+            <div class="formula-box">
+                \[ d_{x,\max} = \max |dx(t)| \]
+                \[ d_{y,\max} = \max |dy(t)| \]
+            </div>
+            <div class="physical-meaning">
+                <h5>物理意义</h5>
+                <p>最大位移反映细菌在追踪期间的空间探索范围，可用于评估细菌的运动能力和活性。</p>
+            </div>
+
+            <h3 id="angular-displacement">3.3 角位移分析</h3>
+            
+            <h4>角度缠绕处理</h4>
+            <p>细菌的姿态角（posture angle）范围为 [0°, 180°]，由于细菌的头尾对称性，180° 和 0° 表示相同的朝向。
+               因此在计算角度变化时需要特殊处理：</p>
+            <div class="formula-box">
+                \[ \Delta\theta_{\text{raw}} = \theta(t) - \theta(t-1) \]
+                \[ \Delta\theta = \begin{cases} 
+                    \Delta\theta_{\text{raw}} - 180° & \text{if } \Delta\theta_{\text{raw}} > 90° \\
+                    \Delta\theta_{\text{raw}} + 180° & \text{if } \Delta\theta_{\text{raw}} < -90° \\
+                    \Delta\theta_{\text{raw}} & \text{otherwise}
+                \end{cases} \]
+            </div>
+
+            <h4>累积角位移</h4>
+            <p>相对于起始姿态的角位移（单位：rad）：</p>
+            <div class="formula-box">
+                \[ \theta_{\text{disp}}(t) = \sum_{i=1}^{t} \Delta\theta(i) \times \frac{\pi}{180} \]
+            </div>
+            <div class="physical-meaning">
+                <h5>物理意义</h5>
+                <p>角位移反映细菌的旋转运动特性。持续增大的角位移表示细菌倾向于单向旋转，而在零附近波动则表示细菌的朝向相对稳定或随机波动。</p>
+            </div>
+
+            <h3 id="velocity">3.4 速度分析</h3>
+            
+            <h4>瞬时速度</h4>
+            <p>相邻帧之间的速度计算：</p>
+            <div class="formula-box">
+                \[ v_x(t) = \frac{x(t) - x(t-1)}{\Delta t} \]
+                \[ v_y(t) = \frac{y(t) - y(t-1)}{\Delta t} \]
+                \[ v(t) = \sqrt{v_x(t)^2 + v_y(t)^2} \]
+            </div>
+            <p>其中 \( \Delta t = 1 \) 秒（假设数据以 1 FPS 采样或已转换为秒）。</p>
+
+            <h4>延迟时间平均速度</h4>
+            <p>对于给定的延迟时间 \( \tau \)，计算所有间隔为 \( \tau \) 的位移，然后求平均速度：</p>
+            <div class="formula-box">
+                \[ \bar{v}_x(\tau) = \frac{1}{N-\tau} \sum_{t=0}^{N-\tau-1} \frac{x(t+\tau) - x(t)}{\tau} \]
+                \[ \bar{v}_y(\tau) = \frac{1}{N-\tau} \sum_{t=0}^{N-\tau-1} \frac{y(t+\tau) - y(t)}{\tau} \]
+                \[ \bar{v}(\tau) = \frac{1}{N-\tau} \sum_{t=0}^{N-\tau-1} \frac{\sqrt{[x(t+\tau)-x(t)]^2 + [y(t+\tau)-y(t)]^2}}{\tau} \]
+            </div>
+            <p>其中 \( N \) 是轨迹点数，\( \tau \) 从 1 到 \( N-1 \)。</p>
+            <div class="physical-meaning">
+                <h5>物理意义</h5>
+                <p>不同延迟时间下的平均速度可以揭示细菌在不同时间尺度上的运动特性。短延迟时间反映瞬时运动，长延迟时间反映整体迁移趋势。</p>
+            </div>
+
+            <h3 id="msd">3.5 均方位移 (MSD)</h3>
+            <p>均方位移是表征扩散运动的核心物理量，定义为：</p>
+            <div class="formula-box">
+                \[ \text{MSD}(\tau) = \left\langle [x(t+\tau) - x(t)]^2 + [y(t+\tau) - y(t)]^2 \right\rangle \]
+                \[ = \frac{1}{N-\tau} \sum_{t=0}^{N-\tau-1} \left[ (x(t+\tau) - x(t))^2 + (y(t+\tau) - y(t))^2 \right] \]
+            </div>
+            <p>其中尖括号表示对所有起始时间 \( t \) 的平均。</p>
+
+            <h4>扩散模型</h4>
+            <p>根据 MSD 与延迟时间 \( \tau \) 的关系可以判断运动类型：</p>
+            <div class="formula-box">
+                \[ \text{MSD}(\tau) \propto \tau^\alpha \]
+            </div>
+            <table>
+                <tr>
+                    <th>α 值</th>
+                    <th>运动类型</th>
+                    <th>物理含义</th>
+                </tr>
+                <tr>
+                    <td>α = 1</td>
+                    <td>正常扩散 (Brownian)</td>
+                    <td>纯随机运动</td>
+                </tr>
+                <tr>
+                    <td>α < 1</td>
+                    <td>亚扩散 (Sub-diffusion)</td>
+                    <td>受限运动，如在拥挤环境中</td>
+                </tr>
+                <tr>
+                    <td>α > 1</td>
+                    <td>超扩散 (Super-diffusion)</td>
+                    <td>定向运动或主动运动</td>
+                </tr>
+                <tr>
+                    <td>α = 2</td>
+                    <td>弹道运动 (Ballistic)</td>
+                    <td>匀速直线运动</td>
+                </tr>
+            </table>
+            <div class="physical-meaning">
+                <h5>物理意义</h5>
+                <p>MSD 是研究微生物运动最重要的统计量之一。通过分析 MSD-τ 曲线的斜率（对数坐标下），可以确定细菌的运动模式，区分被动扩散和主动游动。</p>
+            </div>
+
+            <h3 id="msad">3.6 均方角位移 (MSAD)</h3>
+            <p>均方角位移描述细菌旋转运动的扩散特性：</p>
+            <div class="formula-box">
+                \[ \text{MSAD}(\tau) = \left\langle [\theta(t+\tau) - \theta(t)]^2 \right\rangle \quad (\text{单位: rad}^2) \]
+            </div>
+            <p>计算时需要对每个角度差进行 180° 缠绕处理后转换为弧度：</p>
+            <div class="formula-box">
+                \[ \Delta\theta_{\text{wrapped}}(t, \tau) = \text{wrap}_{180°}[\theta(t+\tau) - \theta(t)] \times \frac{\pi}{180} \]
+                \[ \text{MSAD}(\tau) = \frac{1}{N-\tau} \sum_{t=0}^{N-\tau-1} [\Delta\theta_{\text{wrapped}}(t, \tau)]^2 \]
+            </div>
+            <div class="physical-meaning">
+                <h5>物理意义</h5>
+                <p>MSAD 可用于研究细菌的旋转扩散系数。对于纯旋转扩散，MSAD 与 τ 成线性关系：\( \text{MSAD} = 2D_r\tau \)，其中 \( D_r \) 是旋转扩散系数。</p>
+            </div>
+
+            <h3 id="ellipse-fitting">3.7 轨迹椭圆拟合</h3>
+            <p>对轨迹的所有点进行最小外接椭圆拟合，用于表征轨迹的整体形状。</p>
+            
+            <h4>算法步骤</h4>
+            <ol>
+                <li>计算轨迹所有点的凸包 (Convex Hull)</li>
+                <li>对凸包顶点使用 OpenCV 的 <code>fitEllipse</code> 函数拟合椭圆</li>
+                <li>提取椭圆的长轴和短轴长度</li>
+            </ol>
+            
+            <h4>输出参数</h4>
+            <ul>
+                <li><code>ellipse_major</code>：椭圆长轴长度 (μm)</li>
+                <li><code>ellipse_minor</code>：椭圆短轴长度 (μm)</li>
+                <li><code>ellipse_aspect_ratio</code>：椭圆纵横比 = 短轴/长轴</li>
+            </ul>
+            <div class="physical-meaning">
+                <h5>物理意义</h5>
+                <p>轨迹椭圆的形状反映运动的各向异性。纵横比接近 1 表示运动在各方向均匀扩散，纵横比小表示运动具有明显的优势方向。</p>
+            </div>
+
+            <h3 id="oscillation-index">3.8 振荡指数</h3>
+            <p>振荡指数量化轨迹相对于其主轴方向的横向波动程度。</p>
+            
+            <h4>算法步骤</h4>
+            <ol>
+                <li>对轨迹点 \((x_i, y_i)\) 进行主成分分析 (PCA)</li>
+                <li>确定第一主成分方向作为轨迹主轴</li>
+                <li>计算轨迹质心：
+                    <div class="formula-box">
+                        \[ \bar{x} = \frac{1}{N}\sum_{i=1}^{N} x_i, \quad \bar{y} = \frac{1}{N}\sum_{i=1}^{N} y_i \]
+                    </div>
+                </li>
+                <li>计算每个点到主轴的垂直距离 \( d_i \)</li>
+                <li>振荡指数定义为垂直距离平方的平均值：
+                    <div class="formula-box">
+                        \[ \text{Oscillation Index} = \frac{1}{N}\sum_{i=1}^{N} d_i^2 \]
+                    </div>
+                </li>
+            </ol>
+            <div class="physical-meaning">
+                <h5>物理意义</h5>
+                <p>振荡指数反映细菌运动轨迹的"摆动"程度。值越大表示轨迹在主运动方向的垂直方向上波动越剧烈，可能对应于细菌的鞭毛推进特性或环境扰动的影响。</p>
+            </div>
+
+            <div class="warning">
+                <strong>注意：</strong>振荡指数对短轨迹或近似静止的轨迹可能不稳定，建议结合轨迹长度和总位移一起分析。
+            </div>
+        </section>
+
+        <!-- Section 4: Summary Statistics -->
+        <section id="summary-statistics">
+            <h2>4. 统计汇总</h2>
+            <p>对所有分析对象完成个体分析后，软件会计算群体统计量并保存在 Summary Sheet 中。</p>
+            
+            <h3>全局统计量（与延迟时间无关）</h3>
+            <table>
+                <tr>
+                    <th>统计量</th>
+                    <th>计算方式</th>
+                </tr>
+                <tr>
+                    <td>Mean Area / Std Area</td>
+                    <td>所有对象平均面积的均值和标准差</td>
+                </tr>
+                <tr>
+                    <td>Mean Aspect Ratio / Std Aspect Ratio</td>
+                    <td>所有对象平均纵横比的均值和标准差</td>
+                </tr>
+                <tr>
+                    <td>Mean Max dx / Std Max dx</td>
+                    <td>X方向最大位移的均值和标准差</td>
+                </tr>
+                <tr>
+                    <td>Mean Max dy / Std Max dy</td>
+                    <td>Y方向最大位移的均值和标准差</td>
+                </tr>
+                <tr>
+                    <td>Ellipse Major/Minor/Aspect Ratio</td>
+                    <td>轨迹椭圆参数的均值和标准差</td>
+                </tr>
+                <tr>
+                    <td>Oscillation Index</td>
+                    <td>振荡指数的均值和标准差</td>
+                </tr>
+            </table>
+
+            <h3>延迟时间相关统计量</h3>
+            <p>对于每个延迟时间 τ（从 0 到最大可用延迟时间），计算：</p>
+            <table>
+                <tr>
+                    <th>统计量</th>
+                    <th>说明</th>
+                </tr>
+                <tr>
+                    <td>tau (s)</td>
+                    <td>延迟时间</td>
+                </tr>
+                <tr>
+                    <td>Count</td>
+                    <td>该延迟时间下有效对象数（轨迹长度 > τ）</td>
+                </tr>
+                <tr>
+                    <td>Mean vx / vy / Speed</td>
+                    <td>各方向和总速度的均值</td>
+                </tr>
+                <tr>
+                    <td>Mean Angular Disp</td>
+                    <td>平均角位移的均值</td>
+                </tr>
+                <tr>
+                    <td>Mean MSD / Std MSD</td>
+                    <td>MSD 的均值和标准差</td>
+                </tr>
+                <tr>
+                    <td>Mean MSAD / Std MSAD</td>
+                    <td>MSAD 的均值和标准差</td>
+                </tr>
+            </table>
+            
+            <div class="note">
+                所有统计计算采用简单平均，不根据轨迹长度或标准差进行加权。
+            </div>
+        </section>
+
+        <!-- Section 5: Output Format -->
+        <section id="output-format">
+            <h2>5. 输出文件格式</h2>
+            <p>分析结果保存在 <code>Trajectories_Summary.xlsx</code> 文件中，包含以下 Sheet：</p>
+            
+            <h3>Parameters Sheet</h3>
+            <p>记录实验参数，包括：</p>
+            <ul>
+                <li>原始数据中的所有参数（排除检查参数除外）</li>
+                <li><code>Data Path</code>：用户选择的数据文件夹路径</li>
+            </ul>
+
+            <h3>Source Sheet</h3>
+            <p>记录每个对象的来源信息：</p>
+            <ul>
+                <li><code>Object_ID</code>：汇总表中的对象编号</li>
+                <li><code>Original_File</code>：原始文件路径</li>
+                <li><code>Original_Object</code>：原始文件中的对象编号</li>
+            </ul>
+
+            <h3>Summary Sheet</h3>
+            <p>统计汇总数据，按列组织，便于后续数据处理和绘图。</p>
+
+            <h3>Object_N Sheets</h3>
+            <p>各对象的轨迹数据及分析结果，包含以下列：</p>
+            
+            <h4>原始数据列</h4>
+            <ul>
+                <li><code>time (s)</code>, <code>area (μm²)</code></li>
+                <li><code>center_x (μm)</code>, <code>center_y (μm)</code></li>
+                <li><code>major axis length (μm)</code>, <code>minor axis length (μm)</code></li>
+                <li><code>posture angle (°)</code></li>
+            </ul>
+            
+            <h4>分析结果列</h4>
+            <ul>
+                <li><code>aspect_ratio</code> - 瞬时纵横比</li>
+                <li><code>dx (μm)</code>, <code>dy (μm)</code>, <code>displacement (μm)</code> - 位移</li>
+                <li><code>angular_displacement (rad)</code> - 累积角位移</li>
+                <li><code>vx (μm/s)</code>, <code>vy (μm/s)</code>, <code>speed (μm/s)</code> - 瞬时速度</li>
+                <li><code>mean_vx (μm/s)</code>, <code>mean_vy (μm/s)</code>, <code>mean_speed (μm/s)</code> - 延迟时间平均速度</li>
+                <li><code>mean_angular_disp (rad)</code> - 延迟时间平均角位移</li>
+                <li><code>tau (s)</code>, <code>MSD (μm²)</code>, <code>MSAD (rad²)</code> - 延迟时间相关量</li>
+                <li><code>max_dx (μm)</code>, <code>max_dy (μm)</code> - 最大位移</li>
+                <li><code>ellipse_major (μm)</code>, <code>ellipse_minor (μm)</code>, <code>ellipse_aspect_ratio</code> - 椭圆拟合</li>
+                <li><code>oscillation_index</code> - 振荡指数</li>
+            </ul>
+        </section>
+
+        <footer>
+            <p>Micro Post v1.0 | 细菌轨迹运动分析软件</p>
+            <p>Copyright © 2026 <a href="mailto:lucien-6@qq.com">Lucien</a></p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e1e2e"/>
+      <stop offset="100%" style="stop-color:#2d2d44"/>
+    </linearGradient>
+    <linearGradient id="pathGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#00d4aa"/>
+      <stop offset="100%" style="stop-color:#4fc3f7"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="url(#bgGrad)" stroke="#4a4a6a" stroke-width="8"/>
+  
+  <!-- Trajectory path - curved line representing bacterial movement -->
+  <path d="M 100 320 
+           Q 140 280, 180 300 
+           T 260 260 
+           T 340 220 
+           T 400 160" 
+        fill="none" 
+        stroke="url(#pathGrad)" 
+        stroke-width="12" 
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        filter="url(#glow)"
+        opacity="0.9"/>
+  
+  <!-- Secondary trajectory (background) -->
+  <path d="M 120 380 
+           Q 180 340, 220 360 
+           T 300 320 
+           T 380 280" 
+        fill="none" 
+        stroke="#4fc3f7" 
+        stroke-width="6" 
+        stroke-linecap="round"
+        opacity="0.4"/>
+  
+  <!-- Start point marker (triangle) -->
+  <polygon points="100,320 85,340 115,340" 
+           fill="#00d4aa" 
+           filter="url(#glow)"/>
+  
+  <!-- End point marker (bacteria-like ellipse) -->
+  <ellipse cx="400" cy="160" rx="28" ry="14" 
+           fill="#00d4aa" 
+           transform="rotate(-35 400 160)"
+           filter="url(#glow)"/>
+  
+  <!-- Data points along trajectory -->
+  <circle cx="180" cy="300" r="6" fill="#4fc3f7" opacity="0.8"/>
+  <circle cx="260" cy="260" r="6" fill="#4fc3f7" opacity="0.8"/>
+  <circle cx="340" cy="220" r="6" fill="#4fc3f7" opacity="0.8"/>
+  
+  <!-- Microscope/analysis accent - crosshair -->
+  <g opacity="0.5" stroke="#a0a0b0" stroke-width="2">
+    <circle cx="256" cy="256" r="60" fill="none" stroke-dasharray="8,8"/>
+    <line x1="256" y1="186" x2="256" y2="206"/>
+    <line x1="256" y1="306" x2="256" y2="326"/>
+    <line x1="186" y1="256" x2="206" y2="256"/>
+    <line x1="306" y1="256" x2="326" y2="256"/>
+  </g>
+</svg>
