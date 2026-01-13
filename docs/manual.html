@@ -291,7 +291,7 @@
         <header>
             <h1>Micro Post</h1>
             <p class="subtitle">细菌轨迹运动分析软件使用手册</p>
-            <span class="version">Version 1.1 | 2026-01-07</span>
+            <span class="version">Version 1.2 | 2026-01-13</span>
         </header>
 
         <nav class="toc">
@@ -464,15 +464,15 @@
                 <li>\( d(t) \)：总位移大小 (μm)</li>
             </ul>
 
-            <h4>最大位移</h4>
-            <p>整条轨迹中各方向的最大位移值：</p>
+            <h4>最大位移（轨迹外接矩形）</h4>
+            <p>轨迹外接矩形的宽度和高度：</p>
             <div class="formula-box">
-                \[ d_{x,\max} = \max |dx(t)| \]
-                \[ d_{y,\max} = \max |dy(t)| \]
+                \[ d_{x,\max} = \max(x) - \min(x) \]
+                \[ d_{y,\max} = \max(y) - \min(y) \]
             </div>
             <div class="physical-meaning">
                 <h5>物理意义</h5>
-                <p>最大位移反映细菌在追踪期间的空间探索范围，可用于评估细菌的运动能力和活性。</p>
+                <p>轨迹外接矩形的尺寸反映细菌在各方向上的空间探索范围，可用于评估细菌的运动能力和活性。与起点为参考的位移不同，外接矩形能够捕捉细菌在两个方向上的完整探索范围。</p>
             </div>
 
             <h3 id="angular-displacement">3.3 角位移分析</h3>
@@ -827,7 +827,7 @@
         </section>
 
         <footer>
-            <p>Micro Post v1.0 | 细菌轨迹运动分析软件</p>
+            <p>Micro Post v1.2 | 细菌轨迹运动分析软件</p>
             <p>Copyright © 2026 <a href="mailto:lucien-6@qq.com">Lucien</a></p>
         </footer>
     </div>

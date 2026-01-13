@@ -146,9 +146,9 @@ class MotionAnalyzer:
                 df.loc[df.index[i], "MSD (μm²)"] = lag_results["msd"][i]
                 df.loc[df.index[i], "MSAD (rad²)"] = lag_results["msad"][i]
 
-        # 6. Maximum displacement
-        max_dx = np.max(np.abs(df["dx (μm)"].values))
-        max_dy = np.max(np.abs(df["dy (μm)"].values))
+        # 6. Maximum displacement (bounding box width and height)
+        max_dx = np.max(x) - np.min(x)
+        max_dy = np.max(y) - np.min(y)
 
         # 7. Trajectory ellipse fitting
         ellipse_result = fit_minimum_bounding_ellipse(positions)

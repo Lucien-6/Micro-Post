@@ -36,7 +36,7 @@ def main():
     # Create application
     app = QApplication(sys.argv)
     app.setApplicationName("Micro Post")
-    app.setApplicationVersion("1.1.0")
+    app.setApplicationVersion("1.2.0")
     app.setOrganizationName("Lucien")
 
     # Set Fusion style (works best with custom stylesheets)

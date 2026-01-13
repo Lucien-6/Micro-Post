@@ -12,6 +12,7 @@ import numpy as np
 from typing import Dict, List, Set, Optional
 import random
 from openpyxl.utils import get_column_letter
+from openpyxl.styles import Font, Alignment
 
 from src.core.data_loader import DataLoader
 from src.utils.logger import get_logger
@@ -65,31 +66,58 @@ class DataManager:
 
     def _auto_adjust_column_width(self, writer: pd.ExcelWriter):
         """
-        Auto-adjust column widths for all sheets in the workbook.
+        Auto-adjust column widths for all sheets in the workbook,
+        set Arial font for all cells, and bold the header row.
 
         Args:
             writer: pandas ExcelWriter with openpyxl engine.
         """
         workbook = writer.book
+        
+        # Define fonts
+        arial_font = Font(name='Arial', size=10)
+        arial_bold_font = Font(name='Arial', size=10, bold=True)
+        
+        # Define alignment
+        center_alignment = Alignment(horizontal='center', vertical='center')
 
         for sheet_name in workbook.sheetnames:
             worksheet = workbook[sheet_name]
 
+            # Set Arial font for all cells and bold header row
+            for row_idx, row in enumerate(worksheet.iter_rows(), start=1):
+                for cell in row:
+                    if row_idx == 1:  # Header row
+                        cell.font = arial_bold_font
+                    else:  # Data rows
+                        cell.font = arial_font
+
+            # Auto-adjust column widths
             for column_cells in worksheet.columns:
                 max_length = 0
                 column_letter = get_column_letter(column_cells[0].column)
 
                 for cell in column_cells:
                     try:
-                        if cell.value:
-                            cell_length = len(str(cell.value))
+                        if cell.value is not None:
+                            # Calculate display length considering cell value
+                            cell_value = str(cell.value)
+                            # Account for wider characters and formatting
+                            if isinstance(cell.value, (int, float)):
+                                # Numbers might need more space for formatting
+                                cell_length = len(cell_value)
+                            else:
+                                # Text content
+                                cell_length = len(cell_value)
+                            
                             if cell_length > max_length:
                                 max_length = cell_length
                     except (TypeError, AttributeError):
                         pass
 
                 # Add padding and set minimum/maximum width
-                adjusted_width = min(max(max_length + 2, 8), 50)
+                # Increase padding for better readability
+                adjusted_width = min(max(max_length + 3, 10), 60)
                 worksheet.column_dimensions[column_letter].width = adjusted_width
 
     def filter_and_merge(self, min_duration: int) -> Dict[str, int]:

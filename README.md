@@ -1,11 +1,11 @@
 # Micro Post - Bacterial Trajectory Motion Analyzer
 
-![Version](https://img.shields.io/badge/version-1.1-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10+-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-orange.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 
-**Version 1.1** | **Release Date: 2026-01-07**
+**Version 1.2** | **Release Date: 2026-01-13**
 
 A professional desktop application for comprehensive motion analysis of bacterial trajectories from tracking data. Features a modern dark tech UI theme with interactive trajectory visualization and advanced motion analytics.
 
@@ -43,7 +43,7 @@ A professional desktop application for comprehensive motion analysis of bacteria
 
 - **Data Loading & Validation**: Automatically search and validate trajectory Excel files with parameter consistency checking
 - **Data Filtering & Merging**: Filter objects by minimum tracking duration and merge into a unified summary file
-- **Interactive Trajectory Preview**: 
+- **Interactive Trajectory Preview**:
   - Visualize trajectories with mouse interactions (hover, click, double-click)
   - Zoom in/out with scroll wheel centered on mouse position
   - Reset zoom with middle mouse button
@@ -71,6 +71,7 @@ A professional desktop application for comprehensive motion analysis of bacteria
 ![Micro Post Main Interface](docs/images/screenshot.png)
 
 The main interface features a modern dark tech theme with:
+
 - **Left Panel**: Interactive trajectory visualization canvas with zoom and pan capabilities
 - **Right Panel**: Control sections for data loading, preview settings, object exclusion, and motion analysis
 - **Status Bar**: Real-time feedback and instructions
@@ -122,7 +123,7 @@ python main.py
 1. **Select Data Folder**: Click "Browse..." to select the folder containing trajectory Excel files
 2. **Set Minimum Duration**: Adjust the minimum tracking duration threshold (default: 10s)
 3. **Load Data**: Click "Load Data" to search, validate, and merge trajectory data
-4. **Preview Trajectories**: 
+4. **Preview Trajectories**:
    - Adjust canvas size and display count
    - Click "Redraw" for random trajectory selection
    - Interact with trajectories using mouse
@@ -132,15 +133,15 @@ python main.py
 
 ### Trajectory Preview Interactions
 
-| Action | Effect |
-|--------|--------|
-| Hover (within 5px) | Show trajectory ID |
-| Left-click | Hide clicked trajectory |
-| Right-click | Hide all other trajectories |
-| Double-click empty area | Show all trajectories |
-| Scroll wheel up | Zoom in (centered on mouse) |
-| Scroll wheel down | Zoom out (centered on mouse) |
-| Middle-click | Reset zoom to original view |
+| Action                  | Effect                       |
+| ----------------------- | ---------------------------- |
+| Hover (within 5px)      | Show trajectory ID           |
+| Left-click              | Hide clicked trajectory      |
+| Right-click             | Hide all other trajectories  |
+| Double-click empty area | Show all trajectories        |
+| Scroll wheel up         | Zoom in (centered on mouse)  |
+| Scroll wheel down       | Zoom out (centered on mouse) |
+| Middle-click            | Reset zoom to original view  |
 
 ## Input Data Format
 
@@ -164,6 +165,7 @@ The application searches up to 3 levels of subdirectories for trajectory files.
 Each `Trajectories_Results_*.xlsx` file should contain:
 
 1. **Parameters Sheet**: Experiment parameters
+
    - FPS, Pixel Scale, Filter settings, etc.
    - Note: `Video Path`, `Mask Directory`, `Exclude Object IDs`, `Total Objects`, `Passed Objects`, and `Filtered Objects` are excluded from consistency checks
 
@@ -185,6 +187,7 @@ The analysis generates a summary Excel file in the selected data folder with aut
 ### Fitting_Results.png
 
 A journal-quality figure showing MSD and MSAD fitting results with:
+
 - Original data curves with standard deviation error bands
 - Fitted curves with model equations
 - Fitting parameters and R² values
@@ -215,6 +218,7 @@ A journal-quality figure showing MSD and MSAD fitting results with:
 ### Angular Displacement Calculation
 
 For 180° symmetric objects (bacteria), angular changes >90° are adjusted:
+
 - If Δθ > 90°, Δθ = Δθ - 180°
 - If Δθ < -90°, Δθ = Δθ + 180°
 
@@ -223,6 +227,7 @@ This ensures continuous angular tracking without artificial jumps.
 ### Mean Squared Displacement (MSD)
 
 Calculated for lag times τ from 0 to (trajectory length - 1):
+
 ```
 MSD(τ) = <[x(t+τ) - x(t)]² + [y(t+τ) - y(t)]²>
 ```
@@ -230,6 +235,7 @@ MSD(τ) = <[x(t+τ) - x(t)]² + [y(t+τ) - y(t)]²>
 ### Mean Squared Angular Displacement (MSAD)
 
 Similar to MSD but for angular displacement with 180° wrapping:
+
 ```
 MSAD(τ) = <[θ(t+τ) - θ(t)]²>  (in rad²)
 ```
@@ -237,6 +243,7 @@ MSAD(τ) = <[θ(t+τ) - θ(t)]²>  (in rad²)
 ### Oscillation Index
 
 Calculated using PCA analysis:
+
 1. Find principal axis direction of trajectory points
 2. Axis passes through trajectory centroid
 3. Compute perpendicular distance from each point to axis
@@ -251,19 +258,23 @@ Uses OpenCV's convex hull + fitEllipse method for minimum bounding ellipse of tr
 Two fitting models are available:
 
 **Constant Velocity Drift Model:**
+
 ```
 MSD(t) = 4·D_T·t + V²·t²
 MSAD(t) = 2·D_R·t
 ```
+
 - D_T: Translational diffusion coefficient (μm²/s)
 - V: Drift velocity (μm/s)
 - D_R: Rotational diffusion coefficient (rad²/s)
 
 **Active Diffusion Model:**
+
 ```
 MSD(t) = 4·D_eff·(t - τ_r·(1 - exp(-t/τ_r)))
 MSAD(t) = 2·D_R·t
 ```
+
 - D_eff: Effective diffusion coefficient (μm²/s)
 - τ_r: Direction persistence time (s)
 - D_R: Rotational diffusion coefficient (rad²/s)
@@ -312,16 +323,16 @@ Micro Post/
 
 All required Python packages are listed in `requirements.txt` and will be installed automatically during setup.
 
-| Package | Version | Purpose |
-|---------|---------|---------|
-| PyQt6 | >= 6.4.0 | GUI framework |
-| pandas | >= 2.0.0 | Data manipulation |
-| numpy | >= 1.24.0 | Numerical computing |
-| openpyxl | >= 3.1.0 | Excel file I/O |
-| scipy | >= 1.10.0 | Scientific computing |
-| scikit-learn | >= 1.2.0 | PCA analysis |
-| matplotlib | >= 3.7.0 | Data visualization |
-| opencv-python | >= 4.8.0 | Ellipse fitting |
+| Package       | Version   | Purpose              |
+| ------------- | --------- | -------------------- |
+| PyQt6         | >= 6.4.0  | GUI framework        |
+| pandas        | >= 2.0.0  | Data manipulation    |
+| numpy         | >= 1.24.0 | Numerical computing  |
+| openpyxl      | >= 3.1.0  | Excel file I/O       |
+| scipy         | >= 1.10.0 | Scientific computing |
+| scikit-learn  | >= 1.2.0  | PCA analysis         |
+| matplotlib    | >= 3.7.0  | Data visualization   |
+| opencv-python | >= 4.8.0  | Ellipse fitting      |
 
 ## Contributing
 
@@ -343,6 +354,18 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 - Ensure all tests pass before submitting
 
 ## Changelog
+
+### Version 1.2 (2026-01-13)
+
+**Bug Fixes & Improvements**
+
+- 🐛 **Fixed**: Maximum displacement calculation now correctly computes trajectory bounding box dimensions (width and height) instead of displacement from origin
+- ✨ **Enhanced**: Excel export formatting improvements:
+  - Unified Arial font (10pt) for all cells across all sheets
+  - Bold formatting for header rows for better readability
+  - Improved column width auto-adjustment (min: 10, max: 60, padding: 3)
+  - Enhanced content display ensuring all data is fully visible
+- 📝 **Updated**: Documentation to reflect corrected maximum displacement calculation method
 
 ### Version 1.1 (2026-01-07)
 
