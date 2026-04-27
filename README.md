@@ -1,11 +1,11 @@
 # Micro Post - Bacterial Trajectory Motion Analyzer
 
-![Version](https://img.shields.io/badge/version-1.2-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.2-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10+-green.svg)
 ![License](https://img.shields.io/badge/license-MIT-orange.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
 
-**Version 1.2** | **Release Date: 2026-01-13**
+**Version 1.2.2** | **Release Date: 2026-04-27**
 
 A professional desktop application for comprehensive motion analysis of bacterial trajectories from tracking data. Features a modern dark tech UI theme with interactive trajectory visualization and advanced motion analytics.
 
@@ -354,6 +354,16 @@ Contributions are welcome! Please feel free to submit issues, feature requests, 
 - Ensure all tests pass before submitting
 
 ## Changelog
+
+### Version 1.2.2 (2026-04-27)
+
+**Algorithm Improvement**
+
+- ✨ **Enhanced**: Ensemble-averaged MSD/MSAD now uses trajectory-length weighted averaging instead of simple arithmetic mean
+  - Weight = \(N_i - \tau\) (valid displacement pairs per trajectory at lag time \(\tau\))
+  - Longer trajectories with more reliable statistics contribute proportionally more to the ensemble mean
+  - Standard deviation also computed with the same frequency weighting for consistency
+- 📝 **Updated**: Documentation to reflect the weighted averaging methodology
 
 ### Version 1.2 (2026-01-13)
 

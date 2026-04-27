@@ -291,7 +291,7 @@
         <header>
             <h1>Micro Post</h1>
             <p class="subtitle">细菌轨迹运动分析软件使用手册</p>
-            <span class="version">Version 1.2 | 2026-01-13</span>
+            <span class="version">Version 1.2.2 | 2026-04-27</span>
         </header>
 
         <nav class="toc">
@@ -635,6 +635,18 @@
             <h3 id="curve-fitting">3.9 MSD/MSAD 曲线拟合</h3>
             <p>对群体平均的 MSD 和 MSAD 曲线进行物理模型拟合，以提取扩散系数等物理参数。用户可在运动分析前选择两种拟合模型之一。</p>
             
+            <h4>系综平均方法 (Ensemble Averaging)</h4>
+            <p>软件采用<strong>轨迹长度加权平均</strong>计算系综平均 MSD/MSAD，以提高统计严谨性：</p>
+            <div class="formula-box">
+                \[ \text{MSD}_{\text{ens}}(\tau) = \frac{\sum_{i=1}^{M} (N_i - \tau) \cdot \text{MSD}_i(\tau)}{\sum_{i=1}^{M} (N_i - \tau)} \]
+                \[ \text{MSAD}_{\text{ens}}(\tau) = \frac{\sum_{i=1}^{M} (N_i - \tau) \cdot \text{MSAD}_i(\tau)}{\sum_{i=1}^{M} (N_i - \tau)} \]
+            </div>
+            <p>其中 \( N_i \) 为第 i 条轨迹的总帧数，权重 \( w_i = N_i - \tau \) 表示该轨迹在滞后时间 τ 下的有效位移配对数。标准差同样采用频率加权计算：</p>
+            <div class="formula-box">
+                \[ \sigma_w(\tau) = \sqrt{\frac{\sum_{i=1}^{M} w_i \cdot (x_i - \bar{x}_w)^2}{\sum_{i=1}^{M} w_i}}, \quad \bar{x}_w = \frac{\sum w_i x_i}{\sum w_i} \]
+            </div>
+            <p>这种方法使得具有更多统计数据的长轨迹在系综平均中被赋予更大的权重，相比简单的算术平均更为严谨合理。在 Summary 输出中，<code>Count</code> 列报告的是总有效位移配对数 \( \sum (N_i - \tau) \)，反映了该滞后时间的统计可靠性。</p>
+            
             <h4>定速漂移模型 (Constant Velocity Drift)</h4>
             <p>适用于存在定向漂移运动的情况：</p>
             <div class="formula-box">
@@ -827,7 +839,7 @@
         </section>
 
         <footer>
-            <p>Micro Post v1.2 | 细菌轨迹运动分析软件</p>
+            <p>Micro Post v1.2.2 | 细菌轨迹运动分析软件</p>
             <p>Copyright © 2026 <a href="mailto:lucien-6@qq.com">Lucien</a></p>
         </footer>
     </div>

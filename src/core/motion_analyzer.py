@@ -55,6 +55,30 @@ class MotionAnalyzer:
         self._mean_msad: Optional[np.ndarray] = None
         self._std_msad: Optional[np.ndarray] = None
 
+    @staticmethod
+    def _weighted_mean_std(
+        values: np.ndarray,
+        weights: np.ndarray
+    ) -> Tuple[float, float]:
+        """
+        Compute weighted mean and weighted standard deviation.
+
+        Args:
+            values: 1-D array of values.
+            weights: 1-D array of weights (same length as values).
+
+        Returns:
+            Tuple of (weighted_mean, weighted_std). Returns (NaN, NaN)
+            if weights sum to zero or inputs are empty.
+        """
+        if len(values) == 0 or np.sum(weights) < 1e-15:
+            return np.nan, np.nan
+
+        w_mean = float(np.average(values, weights=weights))
+        w_var = float(np.average((values - w_mean) ** 2, weights=weights))
+        w_std = np.sqrt(w_var)
+        return w_mean, w_std
+
     def set_fitting_model(self, model_type: str) -> None:
         """
         Set the fitting model type.
@@ -174,6 +198,7 @@ class MotionAnalyzer:
         df["ellipse_minor (μm)"] = np.nan
         df["ellipse_aspect_ratio"] = np.nan
         df["oscillation_index"] = np.nan
+        df["n_points"] = np.nan
 
         df.loc[df.index[0], "max_dx (μm)"] = max_dx
         df.loc[df.index[0], "max_dy (μm)"] = max_dy
@@ -181,6 +206,7 @@ class MotionAnalyzer:
         df.loc[df.index[0], "ellipse_minor (μm)"] = ellipse_minor
         df.loc[df.index[0], "ellipse_aspect_ratio"] = ellipse_ar
         df.loc[df.index[0], "oscillation_index"] = oscillation_idx
+        df.loc[df.index[0], "n_points"] = n_points
 
         return df
 
@@ -435,8 +461,9 @@ class MotionAnalyzer:
 
         # Initialize lag-time data storage
         lag_data = {tau: {
-            "mean_vx": [], "mean_vy": [], "mean_speed": [],
-            "mean_angular_disp": [], "msd": [], "msad": []
+            "mean_vx_vals": [], "mean_vy_vals": [], "mean_speed_vals": [],
+            "mean_angular_disp_vals": [], "msd_vals": [], "msad_vals": [],
+            "weights": []
         } for tau in range(self.max_tau_global + 1)}
 
         # Collect statistics from each object
@@ -470,7 +497,9 @@ class MotionAnalyzer:
             if not np.isnan(osc_idx):
                 all_oscillation_idx.append(osc_idx)
 
-            # Lag-time dependent values
+            # Lag-time dependent values (with trajectory-length weighting)
+            n_points = int(df["n_points"].iloc[0])
+
             for i, row in df.iterrows():
                 tau = row["tau (s)"]
                 if pd.isna(tau):
@@ -478,6 +507,12 @@ class MotionAnalyzer:
                 tau = int(tau)
                 if tau > self.max_tau_global:
                     continue
+
+                weight = n_points - tau  # valid displacement pairs for this tau
+                if weight <= 0:
+                    continue
+
+                lag_data[tau]["weights"].append(weight)
 
                 for key in ["mean_vx", "mean_vy", "mean_speed",
                             "mean_angular_disp", "msd", "msad"]:
@@ -491,9 +526,9 @@ class MotionAnalyzer:
                     }
                     val = row[col_map[key]]
                     if not pd.isna(val):
-                        lag_data[tau][key].append(val)
+                        lag_data[tau][key + "_vals"].append(val)
 
-        # Compute Mean MSD and MSAD arrays for fitting
+        # Compute weighted-mean MSD and MSAD arrays for fitting
         mean_msd_list = []
         std_msd_list = []
         mean_msad_list = []
@@ -503,17 +538,22 @@ class MotionAnalyzer:
         for tau in range(self.max_tau_global + 1):
             ld = lag_data[tau]
             tau_list.append(tau)
+            w_arr = np.array(ld["weights"], dtype=np.float64)
 
-            if len(ld["msd"]) > 0:
-                mean_msd_list.append(np.mean(ld["msd"]))
-                std_msd_list.append(np.std(ld["msd"]))
+            if len(ld["msd_vals"]) > 0 and np.sum(w_arr) > 1e-15:
+                msd_vals = np.array(ld["msd_vals"], dtype=np.float64)
+                w_mean, w_std = self._weighted_mean_std(msd_vals, w_arr)
+                mean_msd_list.append(w_mean)
+                std_msd_list.append(w_std)
             else:
                 mean_msd_list.append(np.nan)
                 std_msd_list.append(np.nan)
 
-            if len(ld["msad"]) > 0:
-                mean_msad_list.append(np.mean(ld["msad"]))
-                std_msad_list.append(np.std(ld["msad"]))
+            if len(ld["msad_vals"]) > 0 and np.sum(w_arr) > 1e-15:
+                msad_vals = np.array(ld["msad_vals"], dtype=np.float64)
+                w_mean, w_std = self._weighted_mean_std(msad_vals, w_arr)
+                mean_msad_list.append(w_mean)
+                std_msad_list.append(w_std)
             else:
                 mean_msad_list.append(np.nan)
                 std_msad_list.append(np.nan)
@@ -637,7 +677,10 @@ class MotionAnalyzer:
         # Build rows for each tau
         for tau in range(self.max_tau_global + 1):
             ld = lag_data[tau]
-            n_count = len(ld["msd"])
+            w_arr = np.array(ld["weights"], dtype=np.float64)
+            n_objects = len(ld["msd_vals"])  # number of objects contributing data
+            total_pairs = int(np.sum(w_arr)) if n_objects > 0 else 0
+            has_data = (n_objects > 0 and np.sum(w_arr) > 1e-15)
 
             # Global stats only in first row
             if tau == 0:
@@ -697,28 +740,25 @@ class MotionAnalyzer:
                 summary_data["D_R (rad²/s)"].append(np.nan)
                 summary_data["MSAD R²"].append(np.nan)
 
-            # tau and Count columns
+            # tau and Count columns (total_pairs reflects statistical reliability)
             summary_data["tau (s)"].append(tau)
-            summary_data["Count"].append(n_count)
+            summary_data["Count"].append(total_pairs)
 
-            # Lag-time dependent stats
-            if n_count > 0:
-                summary_data["Mean vx (μm/s)"].append(np.mean(ld["mean_vx"]))
-                summary_data["Std vx (μm/s)"].append(np.std(ld["mean_vx"]))
-                summary_data["Mean vy (μm/s)"].append(np.mean(ld["mean_vy"]))
-                summary_data["Std vy (μm/s)"].append(np.std(ld["mean_vy"]))
-                summary_data["Mean Speed (μm/s)"].append(np.mean(ld["mean_speed"]))
-                summary_data["Std Speed (μm/s)"].append(np.std(ld["mean_speed"]))
-                summary_data["Mean Angular Disp (rad)"].append(
-                    np.mean(ld["mean_angular_disp"])
-                )
-                summary_data["Std Angular Disp (rad)"].append(
-                    np.std(ld["mean_angular_disp"])
-                )
-                summary_data["Mean MSD (μm²)"].append(np.mean(ld["msd"]))
-                summary_data["Std MSD (μm²)"].append(np.std(ld["msd"]))
-                summary_data["Mean MSAD (rad²)"].append(np.mean(ld["msad"]))
-                summary_data["Std MSAD (rad²)"].append(np.std(ld["msad"]))
+            # Lag-time dependent stats (weighted mean and weighted std)
+            if has_data:
+                key_map = {
+                    "mean_vx": ("Mean vx (μm/s)", "Std vx (μm/s)"),
+                    "mean_vy": ("Mean vy (μm/s)", "Std vy (μm/s)"),
+                    "mean_speed": ("Mean Speed (μm/s)", "Std Speed (μm/s)"),
+                    "mean_angular_disp": ("Mean Angular Disp (rad)", "Std Angular Disp (rad)"),
+                    "msd": ("Mean MSD (μm²)", "Std MSD (μm²)"),
+                    "msad": ("Mean MSAD (rad²)", "Std MSAD (rad²)"),
+                }
+                for key, (mean_col, std_col) in key_map.items():
+                    vals = np.array(ld[key + "_vals"], dtype=np.float64)
+                    w_mean, w_std = self._weighted_mean_std(vals, w_arr)
+                    summary_data[mean_col].append(w_mean)
+                    summary_data[std_col].append(w_std)
             else:
                 summary_data["Mean vx (μm/s)"].append(np.nan)
                 summary_data["Std vx (μm/s)"].append(np.nan)
